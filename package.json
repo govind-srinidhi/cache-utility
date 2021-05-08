@@ -1,0 +1,26 @@
+{
+  "name": "cache-utility",
+  "version": "1.0.0",
+  "description": "This application is used to implement cache using mongodb",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/govind-srinidhi/cache-utility.git"
+  },
+  "author": "Govind",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/govind-srinidhi/cache-utility/issues"
+  },
+  "homepage": "https://github.com/govind-srinidhi/cache-utility#readme",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "mongodb": "^3.6.6",
+    "node": "^16.1.0"
+  }
+}
