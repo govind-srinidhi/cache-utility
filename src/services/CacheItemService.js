@@ -4,7 +4,8 @@ const Constants   = require("../constants")
 
 
 const getAll = async function getAll(db) {
-  return db.cacheDb.collection(Constants.COLLECTIONS.CACHE_ITEM).find().toArray()
+  const results = await db.cacheDb.collection(Constants.COLLECTIONS.CACHE_ITEM).find().toArray()
+  return results
 }
 
 const findByKey = async function findByKey(db, key) {
@@ -18,18 +19,18 @@ const findByKey = async function findByKey(db, key) {
       console.log("Cache Hit")
       const currentTime = new Date().getTime();
       const updateJson = {
-          "ttl": currentTime + Constants.CACHE_TTL_IN_MILLIS,
+          "ttl": new Date(currentTime + Constants.CACHE_TTL_IN_MILLIS),
           "last_access_time": currentTime
       }
-      await updateCacheItem(key, updateJson);
+      await updateCacheItem(db, key, updateJson);
       return {...cacheItem, ...updateJson}
     } else {
-        const newCacheItem = await replaceCacheItem(key);
+        const newCacheItem = await replaceCacheItem(db, key);
         return {
           ...cacheItem, ...{
-              value: newCacheItem?.value,
-              ttl: newCacheItem?.ttl,
-              last_access_time: newCacheItem?.last_access_time
+              value: newCacheItem.value,
+              ttl: newCacheItem.ttl,
+              last_access_time: newCacheItem.last_access_time
           }
         }
     }
@@ -39,7 +40,7 @@ const findByKey = async function findByKey(db, key) {
       "key": key,
       "value": CommonUtils.generateRandomString(5)
     }
-    return await createCacheItem(cacheItem);
+    return await createCacheItem(db, cacheItem);
   }
 }
 
@@ -47,19 +48,21 @@ const updateCacheItem = async function updateCacheItem(db, key, updateJson) {
   const searchCriteria = {
     "key": key
   }
-  await db.cacheDb.collection(Constants.COLLECTIONS.CACHE_ITEM).updateOne(searchCriteria, updateJson)
+  await db.cacheDb.collection(Constants.COLLECTIONS.CACHE_ITEM).updateOne(searchCriteria, {$set: updateJson})
 }
 
 const createCacheItem = async function createCacheItem(db, cacheItem) {
   const countOfCollection = await db.cacheDb.collection(Constants.COLLECTIONS.CACHE_ITEM).countDocuments({});
   if (countOfCollection >= Constants.MAX_CACHE_ITEMS) {
-      await removeByLru();
+      await removeByLru(db);
+  } else if (countOfCollection === 0) {
+    await db.cacheDb.collection(Constants.COLLECTIONS.CACHE_ITEM).createIndex({ttl: 1}, {expireAfterSeconds: Constants.CACHE_TTL_IN_MILLIS/1000})
   }
   const currentTime = new Date().getTime();
-  cacheItem.ttl = currentTime + Constants.CACHE_TTL_IN_MILLIS
+  cacheItem.ttl = new Date(currentTime + Constants.CACHE_TTL_IN_MILLIS)
   cacheItem.last_access_time = currentTime
   const insertedItem = await db.cacheDb.collection(Constants.COLLECTIONS.CACHE_ITEM).insertOne(cacheItem)
-  return insertedItem?.ops
+  return insertedItem ? insertedItem.ops : ""
 }
 
 const replaceCacheItem = async function replaceCacheItem(db, key) {
@@ -69,10 +72,10 @@ const replaceCacheItem = async function replaceCacheItem(db, key) {
   const currentTime = new Date().getTime();
   const updateJson = {
     "value": CommonUtils.generateRandomString(5),
-    "ttl": currentTime + Constants.CACHE_TTL_IN_MILLIS,
+    "ttl": new Date(currentTime + Constants.CACHE_TTL_IN_MILLIS),
     "last_access_time": currentTime
   }
-  await db.cacheDb.collection(Constants.COLLECTIONS.CACHE_ITEM).updateOne(searchCriteria, updateJson)
+  await db.cacheDb.collection(Constants.COLLECTIONS.CACHE_ITEM).updateOne(searchCriteria, {$set: updateJson})
   return {...updateJson, ...searchCriteria}
 }
 
@@ -91,9 +94,10 @@ const removeByLru = async function removeByLru(db) {
   const sortCondition = {
     "last_access_time": 1
   }
-  const lruItem = await db.cacheDb.collection(Constants.COLLECTIONS.CACHE_ITEM).find().sort(sortCondition).limit(1);
-  if (lruItem) {
-    await deleteCacheItem(lruItem.key)
+  const cursor = await db.cacheDb.collection(Constants.COLLECTIONS.CACHE_ITEM).find().sort(sortCondition).limit(1);
+  if (cursor.hasNext()) {
+    const lruItem = await cursor.next();
+    await deleteCacheItem(db, lruItem.key)
   }
 }
 

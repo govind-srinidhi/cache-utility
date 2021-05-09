@@ -11,8 +11,7 @@ const findByKey = async function findByKey(request, response, db) {
 }
 
 const create = async function create(request, response, db) {
-  const { key, value } = request.body
-  return CacheItemDatabaseService.createCacheItem(db, {key: key, value: value})
+  return CacheItemDatabaseService.createCacheItem(db, request.body)
 }
 
 const update = async function update(request, response, db) {

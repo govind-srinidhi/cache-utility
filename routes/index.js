@@ -1,10 +1,10 @@
 const CacheItemHandler = require("../src/handlers/CacheItemHandler")
+const Constants        = require("../src/constants")
 
 module.exports = function(app, db) {
   app.get("/cache-items", (request, response) => {
     CacheItemHandler.getAll(request, response, db)
-      .then(results => response.status(Constants.STATUS_CODES.OK).json(results))
-      .catch(next)
+      .then(results => response.json(results))
   })
   
   app.get("/cache-items/:key", (request, response, next) => {

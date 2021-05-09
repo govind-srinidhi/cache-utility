@@ -14,7 +14,7 @@ const COLLECTIONS = {
   CACHE_ITEM: "cache"
 }
 
-export default {
+module.exports = {
   CACHE_TTL_IN_MILLIS: 60*1000,
   MAX_CACHE_ITEMS: 5,
   COLLECTIONS,
